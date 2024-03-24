@@ -1,9 +1,11 @@
-using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Microsoft.EntityFrameworkCore;
 using url_shortener.Config;
 using url_shortener.Database;
 using url_shortener.ServiceExtensions;
+using url_shortener.ServiceExtensions.RedisConn;
 using url_shortener.ServiceExtensions.DatabaseService;
+using url_shortener.ServiceExtensions.CacheService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,7 +25,7 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-
+builder.Services.Configure<RedisConfig>(configuration.GetSection("Redis"));
 builder.Services.Configure<ShortLinkSettings>(configuration.GetSection("ShortLinkSettings"));
 
 // Add services to the container.
@@ -32,6 +34,8 @@ builder.Services.AddSingleton(new HttpClient { });
 builder.Services.AddControllers();
 builder.Services.UseUrlShorteningService();
 builder.Services.UseUrlShorteningDbService();
+builder.Services.UseCache();
+builder.Services.UseRedisConnection();
 builder.Services.UseApplicationDbContext(configuration);
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

@@ -10,13 +10,15 @@ public class UrlShorteningController : ControllerBase
 {
     public IUrlShorteningService UrlShorteningService;
     public IUrlShorteningDbService UrlShorteningDbService;
+    public ICacheService CacheService;
 
     public record ShortenUrlRequest(string Url);
 
-    public UrlShorteningController(IUrlShorteningService urlShorteningService, IUrlShorteningDbService urlShorteningDbService)
+    public UrlShorteningController(IUrlShorteningService urlShorteningService, IUrlShorteningDbService urlShorteningDbService, ICacheService cacheService)
     {
         UrlShorteningService = urlShorteningService;
         UrlShorteningDbService = urlShorteningDbService;
+        CacheService = cacheService;
     }
 
     [HttpPost("", Name = "shorten")]
@@ -37,12 +39,25 @@ public class UrlShorteningController : ControllerBase
     [HttpGet("{code}", Name = "search")]
     public async Task<IActionResult> GetOriginalUrl(string code)
     {
+        ShortenedUrlDto? data = await CacheService.GetData(code);
+
+        if (data is not null)
+        {
+            return Redirect(data.LongUrl);
+        }
+
         ShortenedUrl? shortenedUrl = await UrlShorteningDbService.SearchUrlByCode(code);
 
         if (shortenedUrl is null)
         {
             return NotFound();
         }
+
+        CacheService.SetData(new ShortenedUrlDto
+        {
+            Code = shortenedUrl.Code,
+            LongUrl = shortenedUrl.LongUrl
+        });
 
         return Redirect(shortenedUrl.LongUrl);
     }
